@@ -1,8 +1,6 @@
-# This is a sample Python script.
+import logging
 
-# Press Maj+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
