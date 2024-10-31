@@ -10,7 +10,6 @@ import logging
 from clip_analyzer import ClipAnalyzer
 from pacing_controller import PacingController
 from color_grader import ColorGrader
-from thumbnail_generator import ThumbnailGenerator
 
 class VideoEditor:
     """A class for automated video editing using ffmpeg."""
@@ -26,7 +25,6 @@ class VideoEditor:
         self.clip_analyzer = ClipAnalyzer()
         self.pacing_controller = PacingController()
         self.color_grader = ColorGrader()
-        self.thumbnail_generator = ThumbnailGenerator()
 
     def _load_config(self, config: Union[str, Dict]) -> Dict:
         """Load configuration from YAML file or dictionary."""
@@ -56,18 +54,6 @@ class VideoEditor:
                     'contrast': [0.7, 1.3],
                     'saturation': [0.7, 1.3],
                     'white_balance': [0.7, 1.3]
-                }
-            }
-        # Set default thumbnail configuration if not present
-        if 'thumbnail_generation' not in config:
-            config['thumbnail_generation'] = {
-                'enabled': True,
-                'count': 3,
-                'enhancement': {
-                    'enabled': True,
-                    'contrast': 1.2,
-                    'brightness': 1.1,
-                    'saturation': 1.2
                 }
             }
         return config
@@ -511,13 +497,6 @@ class VideoEditor:
         self.landscape_dir.mkdir(parents=True, exist_ok=True)
         self.logger.info("Created output format directories")
 
-        # Initialize thumbnail directories
-        self.vertical_thumbnails = self.vertical_dir / 'thumbnails'
-        self.landscape_thumbnails = self.landscape_dir / 'thumbnails'
-        self.vertical_thumbnails.mkdir(parents=True, exist_ok=True)
-        self.landscape_thumbnails.mkdir(parents=True, exist_ok=True)
-        self.logger.info("Created thumbnail directories")
-
         # Create temporary directories for processing
         self.temp_dir = output_dir / 'temp'
         self.first_pass_dir = self.temp_dir / 'first_pass'
@@ -759,26 +738,6 @@ class VideoEditor:
                         raise RuntimeError(f"Concatenation failed: {stderr}")
 
                     self.logger.info("Successfully concatenated videos")
-
-                    # Generate thumbnails if enabled
-                    if self.config['thumbnail_generation']['enabled']:
-                        self.logger.info("Generating thumbnails...")
-                        try:
-                            # Select thumbnail directory based on output format
-                            thumbnail_dir = self.vertical_thumbnails if self.config.get('maintain_vertical', False) else self.landscape_thumbnails
-                            thumbnail_paths = self.thumbnail_generator.generate_thumbnails(
-                                str(output_file),
-                                str(thumbnail_dir),
-                                count=self.config['thumbnail_generation']['count'],
-                                enhancement=self.config['thumbnail_generation']['enhancement']
-                            )
-                            self.logger.info(f"Generated {len(thumbnail_paths)} thumbnails")
-                            return str(output_file)
-                        except Exception as e:
-                            self.logger.error(f"Thumbnail generation failed: {str(e)}")
-                            # Continue even if thumbnail generation fails
-                            return str(output_file)
-
                 except Exception as e:
                     self.logger.error(f"Final concatenation failed: {str(e)}")
                     return None

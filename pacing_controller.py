@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import ffmpeg
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import List, Tuple, Optional
 import logging
 from dataclasses import dataclass
 
