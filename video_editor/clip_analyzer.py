@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import ffmpeg
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List
 import logging
 from dataclasses import dataclass
 from scipy.signal import find_peaks

@@ -7,9 +7,11 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 import logging
-from clip_analyzer import ClipAnalyzer
-from pacing_controller import PacingController
-from color_grader import ColorGrader
+
+from video_editor.clip_analyzer import ClipAnalyzer
+from video_editor.color_grader import ColorGrader
+from video_editor.pacing_controller import PacingController
+
 
 class VideoEditor:
     """A class for automated video editing using ffmpeg."""
@@ -206,7 +208,6 @@ class VideoEditor:
 
             # Create temporary directory for processing
             import tempfile
-            import os
             temp_dir = tempfile.mkdtemp()
 
             try:

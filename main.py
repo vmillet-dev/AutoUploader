@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
 
-from tiktok_service import TiktokService
 from video_editor import VideoEditor
+
 
 # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
