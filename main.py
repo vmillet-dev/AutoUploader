@@ -2,9 +2,9 @@ import logging
 from pathlib import Path
 
 from video_editor import VideoEditor
+from video_source.tiktok import TiktokSource
 
-
-# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def setup_test_environment():
     """Set up test directories and logging."""
@@ -62,5 +62,5 @@ def main():
         logger.error(f"Error during video processing: {str(e)}")
 
 if __name__ == '__main__':
-    main()
-
+    tiktok = TiktokSource()
+    tiktok.get_video_by_keyword('fail', 80)
