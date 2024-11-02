@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from config import Config
 from video_editor import VideoEditor
 from video_source.tiktok import TiktokSource
 
@@ -25,7 +26,7 @@ def main():
     logger = logging.getLogger('TestVideoEditor')
 
     # Initialize VideoEditor with config
-    config_path = 'config/video_config.yaml'
+    config_path = 'config/config.yaml'
     try:
         editor = VideoEditor(config_path)
         logger.info("Successfully initialized VideoEditor")
@@ -62,5 +63,7 @@ def main():
         logger.error(f"Error during video processing: {str(e)}")
 
 if __name__ == '__main__':
-    tiktok = TiktokSource()
-    tiktok.get_video_by_keyword('fail', 80)
+    config = Config.load_config('config/config.yaml')
+
+    tiktok = TiktokSource(config)
+    tiktok.get_video_by_keyword('fail', 10)

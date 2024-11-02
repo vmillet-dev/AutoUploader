@@ -1,8 +1,10 @@
 # Video Editor Configuration
 
 # Input/Output Settings
-input_directory: "./input_videos"
-output_directory: "./output_videos"
+input_output:
+  input_videos_dir: "./temp/input_videos/"
+  output_videos_dir: "./temp/output_videos/"
+  video_urls_by_keyword_file: "./temp/video_urls_by_keyword.json"
 
 # Video Output Settings
 output_resolution:

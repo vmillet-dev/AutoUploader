@@ -137,5 +137,4 @@ cython_debug/
 .idea/
 
 auth/
-input_videos/
-output_videos/
+temp/

@@ -14,9 +14,9 @@ class TiktokSource(VideoSource):
     logger = logging.getLogger("TiktokSource")
     driver = None
 
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         self.logger.setLevel(DEBUG)
-        self.url_file = "fetched_urls.json"
         self.keyword_with_urls = self.__load_fetched_urls()
 
     def get_video_by_keyword(self, keyword, amount=1):
@@ -33,6 +33,7 @@ class TiktokSource(VideoSource):
 
             video_urls = self.__extract_video_urls_from_logs(keyword, amount)
             self.logger.info(f"Amount of new videos found: {len(video_urls)}")
+            self.__download_video(video_urls)
             self.__save_fetched_urls()
         finally:
             self.driver.quit()
@@ -107,7 +108,6 @@ class TiktokSource(VideoSource):
                     or keyword not in self.keyword_with_urls)
                 ):
                 self.logger.info(f"New video url found: {video_url}")
-                #self.__download_video(video_url)
                 video_urls.append(video_url)
                 self.__add_tag_value(keyword, {
                     'url': video_url,
@@ -133,7 +133,7 @@ class TiktokSource(VideoSource):
     def __load_fetched_urls(self):
         """Load previously fetched URLs from a JSON file as a dictionary of lists."""
         try:
-            with open(self.url_file, "r") as file:
+            with open(self.config.input_output.video_urls_by_keyword_file, "r") as file:
                 data = json.load(file)
                 # Ensure data is in the expected dictionary format
                 if isinstance(data, dict):
@@ -146,7 +146,7 @@ class TiktokSource(VideoSource):
 
     def __save_fetched_urls(self):
         """Save fetched URLs to a JSON file directly as lists."""
-        with open(self.url_file, "w") as file:
+        with open(self.config.input_output.video_urls_by_keyword_file, "w") as file:
             json.dump(self.keyword_with_urls, file, indent=4)
 
     def __add_tag_value(self, tag, value):
@@ -155,22 +155,22 @@ class TiktokSource(VideoSource):
             self.keyword_with_urls[tag] = []
         self.keyword_with_urls[tag].append(value)
 
-    def __download_video(self, url):
+    def __download_video(self, urls):
         ydl_opts = {
             'format': 'best',  # Download best quality
-            'outtmpl': str('test/video_%(id)s.%(ext)s'),
+            'outtmpl': str(self.config.input_output.input_videos_dir + 'video_%(id)s.%(ext)s'),
             'quiet': False,
             'no_warnings': False,
             'extract_flat': False,
-            'logger': logging.getLogger(),
+            'logger': self.logger,
             'writesubtitles': True
         }
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-            self.logger.info(f'Successfully downloaded video {url}')
+                ydl.download(urls)
+            self.logger.info(f'Successfully downloaded {len(urls)} video(s)')
 
         except Exception as e:
-            self.logger.error(f'Failed to download video {url}: {str(e)}')
+            self.logger.error(f'Failed to download videos: {str(e)}')
 
