@@ -19,15 +19,17 @@ video_duration_limits:
   min_length: 1  # in seconds
   max_length: 60  # in seconds
 
-# Vertical Video Handling
-vertical_video:
-  background_type: "blur"  # Options: blur, image, video
-  # For background_type options:
-  # - "blur": Uses blurred version of the video itself (set blur_amount)
-  # - "image": Uses static image as background (set background_path to .jpg/.png)
-  # - "video": Uses looping video as background (set background_path to .mp4)
-  background_path: ""  # Path to background image/video if type is image/video
-  blur_amount: 20  # Amount of blur if background_type is blur
+# Video Orientation Settings
+video_orientation:
+  output_mode: "landscape"  # Options: landscape, vertical
+  vertical_video:
+    background_type: "blur"  # Options: blur, image, video
+    # For background_type options:
+    # - "blur": Uses blurred version of the video itself (set blur_amount)
+    # - "image": Uses static image as background (set background_path to .jpg/.png)
+    # - "video": Uses looping video as background (set background_path to .mp4)
+    background_path: ""  # Path to background image/video if type is image/video
+    blur_amount: 20  # Amount of blur if background_type is blur
 
 # Audio Settings
 audio:

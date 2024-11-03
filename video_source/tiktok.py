@@ -23,9 +23,6 @@ class TiktokSource(VideoSource):
         try:
             options = uc.ChromeOptions()
             options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
-            options.add_argument('--window-size=1920,1080')
-            options.add_argument('--start-maximized')
-            options.add_argument(f'--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36')
             self.driver = uc.Chrome(options=options)
 
             self.logger.debug(f"Opening tiktok page with tag {keyword}, searching {amount} video(s)")
@@ -42,7 +39,8 @@ class TiktokSource(VideoSource):
             self.logger.error(f"Error in get_video_by_keyword: {str(e)}")
             raise
         finally:
-            self.driver.quit()
+            if self.driver:
+                self.driver.quit()
 
     def __extract_video_urls_from_logs(self, keyword, amount):
         """Efficiently extracts up to `amount` video URLs from network logs."""

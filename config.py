@@ -34,6 +34,11 @@ class VerticalVideo:
     background_path: str  # Path to background image/video if type is image/video
     blur_amount: int  # Amount of blur if background_type is blur
 
+@dataclass
+class VideoOrientation:
+    output_mode: str  # Options: landscape, vertical
+    vertical_video: VerticalVideo
+
 # Audio Settings
 @dataclass
 class AudioSettings:
@@ -105,7 +110,7 @@ class Config:
     output_resolution: OutputResolution
     video_selection: VideoSelection
     video_duration_limits: VideoDurationLimits
-    vertical_video: VerticalVideo
+    video_orientation: VideoOrientation
     audio: AudioSettings
     text_overlay: TextOverlay
     transitions: Transitions

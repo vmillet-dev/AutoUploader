@@ -38,8 +38,6 @@ class VideoEditor:
         self.temp_dir = self.output_dir / 'temp'
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
-
-
     def _setup_logger(self) -> logging.Logger:
         """Set up logging configuration."""
         logger = logging.getLogger('VideoEditor')
@@ -78,8 +76,8 @@ class VideoEditor:
 
     def _is_vertical(self, video_info: Dict) -> bool:
         """Check if video is vertical based on aspect ratio."""
-        width = int(video_info['width'])
-        height = int(video_info['height'])
+        width = int(video_info.get('width', 0))
+        height = int(video_info.get('height', 0))
         return height > width
 
     def _get_input_videos(self) -> List[str]:
@@ -115,8 +113,8 @@ class VideoEditor:
 
         return filtered_videos
 
-    def _prepare_vertical_video(self, input_video: str, video_info: Dict) -> Tuple[ffmpeg.Stream, ffmpeg.Stream]:
-        """Handle vertical video according to config settings."""
+    def _prepare_video(self, input_video: str, video_info: Dict) -> Tuple[ffmpeg.Stream, ffmpeg.Stream]:
+        """Handle video processing according to config settings."""
         try:
             self.logger.debug(f"Preparing video: {input_video}")
             input_stream = ffmpeg.input(input_video)
@@ -135,17 +133,35 @@ class VideoEditor:
             input_height = int(video_info.get('height', 0))
             target_width = self.config.output_resolution.width
             target_height = self.config.output_resolution.height
+            is_input_vertical = self._is_vertical(video_info)
+            is_output_vertical = self.config.video_orientation.output_mode == "vertical"
 
             if input_width == 0 or input_height == 0:
                 raise ValueError("Invalid input dimensions")
 
             self.logger.debug(f"Input dimensions: {input_width}x{input_height}")
             self.logger.debug(f"Target dimensions: {target_width}x{target_height}")
+            self.logger.debug(f"Input orientation: {'vertical' if is_input_vertical else 'landscape'}")
+            self.logger.debug(f"Output orientation: {self.config.video_orientation.output_mode}")
 
-            # Scale video maintaining aspect ratio
-            scale_factor = min(target_width / input_width, target_height / input_height)
-            new_width = int(input_width * scale_factor)
-            new_height = int(input_height * scale_factor)
+            # Calculate scaling to fit within target dimensions while maintaining aspect ratio
+            input_aspect = input_width / input_height
+            target_aspect = target_width / target_height
+
+            if is_output_vertical:
+                # For vertical output, scale based on width first
+                new_width = target_width
+                new_height = int(new_width / input_aspect)
+                if new_height > target_height:
+                    new_height = target_height
+                    new_width = int(new_height * input_aspect)
+            else:
+                # For landscape output, scale based on height first
+                new_height = target_height
+                new_width = int(new_height * input_aspect)
+                if new_width > target_width:
+                    new_width = target_width
+                    new_height = int(new_width / input_aspect)
 
             # Ensure dimensions are even numbers
             new_width = new_width if new_width % 2 == 0 else new_width - 1
@@ -155,9 +171,45 @@ class VideoEditor:
                 raise ValueError(f"Invalid scaled dimensions: {new_width}x{new_height}")
 
             self.logger.debug(f"Scaling to: {new_width}x{new_height}")
+
+            # Scale the video
+            scaled_video = video_stream.filter('scale', str(new_width), str(new_height))
+
+            # Calculate padding for centered placement
+            x_offset = (target_width - new_width) // 2
+            y_offset = (target_height - new_height) // 2
+
+            # Handle background filling based on orientation mismatch
+            if is_input_vertical != is_output_vertical:
+                background_type = self.config.video_orientation.vertical_video.background_type
+                if background_type == "blur":
+                    # Create blurred background from input
+                    blur_amount = self.config.video_orientation.vertical_video.blur_amount
+                    background = (
+                        video_stream
+                        .filter('scale', str(target_width), str(target_height))
+                        .filter('boxblur', str(blur_amount))
+                    )
+                elif background_type in ["image", "video"]:
+                    # Use provided background
+                    bg_path = self.config.video_orientation.vertical_video.background_path
+                    if not bg_path:
+                        raise ValueError(f"Background path not provided for type: {background_type}")
+                    background = (
+                        ffmpeg.input(bg_path)
+                        .filter('scale', str(target_width), str(target_height))
+                    )
+                else:
+                    # Default to black background
+                    background = ffmpeg.input(f'color=c=black:s={target_width}x{target_height}', f='lavfi')
+            else:
+                # If orientations match, use black background
+                background = ffmpeg.input(f'color=c=black:s={target_width}x{target_height}', f='lavfi')
+
+            # Create final video with background and centered content
             processed_video = (
-                video_stream
-                .filter('scale', str(new_width), str(new_height))
+                background
+                .overlay(scaled_video, x=x_offset, y=y_offset)
                 .filter('format', 'yuv420p')
             )
 
@@ -242,55 +294,56 @@ class VideoEditor:
                     self.logger.debug(f"Processing video {i+1}/{len(filtered_videos)}: {video_path}")
                     self.logger.debug(f"Video info: {video_info}")
 
-                    # Prepare video stream
-                    video_stream, audio_stream = self._prepare_vertical_video(video_path, video_info)
-
-                    # Apply audio normalization if available
-                    if audio_stream and self.config.audio.normalize:
-                        audio_stream = self._normalize_audio(audio_stream)
-
-                    # Apply color grading if enabled
-                    if self.config.effects.color_grading.enabled:
-                        video_stream = self.color_grader.apply_grading(video_stream)
-
                     # Output processed video
                     output_path = self.temp_dir / f"processed_{i}.mp4"
+                    self.logger.info(f"Processing to temporary file: {output_path}")
 
-                    # Combine streams and output
-                    streams = [video_stream]
-                    if audio_stream:
-                        streams.append(audio_stream)
+                    # Build FFmpeg command for video processing
+                    cmd = [
+                        'ffmpeg',
+                        '-i', str(video_path),
+                        '-vf', f'scale={self.config.output_resolution.width}:{self.config.output_resolution.height}:force_original_aspect_ratio=decrease,pad={self.config.output_resolution.width}:{self.config.output_resolution.height}:(ow-iw)/2:(oh-ih)/2',
+                        '-c:v', 'libx264',
+                        '-preset', 'ultrafast',
+                        '-pix_fmt', 'yuv420p',
+                        '-c:a', 'aac',
+                        '-movflags', '+faststart',
+                        '-y',
+                        str(output_path)
+                    ]
 
-                    # Configure output options
-                    output_options = {
-                        'vcodec': 'libx264',
-                        'preset': 'medium',
-                        'pix_fmt': 'yuv420p',
-                        'movflags': '+faststart'
-                    }
-
-                    if audio_stream:
-                        output_options['acodec'] = 'aac'
-                        output_options['ac'] = '2'  # Stereo audio
-                    else:
-                        output_options['an'] = None  # No audio flag
-
-                    # Create output stream with options
-                    stream = ffmpeg.output(
-                        *streams,
-                        str(output_path),
-                        **output_options
-                    ).overwrite_output()
-
-                    # Run FFmpeg with error capture
+                    # Run FFmpeg with subprocess for timeout control
                     try:
-                        stdout, stderr = ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
+                        self.logger.info("Starting FFmpeg processing")
+                        process = subprocess.Popen(
+                            cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            universal_newlines=True
+                        )
+
+                        # Monitor progress
+                        start_time = time.time()
+                        while process.poll() is None:
+                            if time.time() - start_time > 300:  # 5 minute timeout
+                                process.kill()
+                                raise subprocess.TimeoutExpired(cmd, 300)
+                            time.sleep(1)
+
+                        stdout, stderr = process.communicate()
+                        if process.returncode != 0:
+                            raise subprocess.CalledProcessError(process.returncode, cmd, stderr)
                         processed_videos.append(str(output_path))
                         self.logger.info(f"Successfully processed video {i+1}/{len(filtered_videos)}")
-                    except ffmpeg.Error as e:
-                        self.logger.error(f"FFmpeg error processing {video_path}:")
-                        self.logger.error(f"stdout: {e.stdout.decode() if e.stdout else ''}")
-                        self.logger.error(f"stderr: {e.stderr.decode() if e.stderr else ''}")
+
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        self.logger.error("FFmpeg process timed out after 300 seconds")
+                        continue
+                    except Exception as e:
+                        self.logger.error(f"Error during FFmpeg processing: {str(e)}")
+                        if process and process.poll() is None:
+                            process.kill()
                         continue
 
                 except Exception as e:
@@ -300,43 +353,67 @@ class VideoEditor:
             if not processed_videos:
                 raise ValueError("No videos were successfully processed")
 
-            # Create final compilation with transitions
+            # Create final compilation
             final_output = self.output_dir / "final_compilation.mp4"
+            self.logger.info("Creating final compilation")
 
             try:
                 if len(processed_videos) == 1:
+                    self.logger.info("Single video compilation - copying file")
                     shutil.copy2(processed_videos[0], final_output)
                 else:
-                    # Create concat file for FFmpeg
+                    # Create concat file
                     concat_file = self.temp_dir / 'concat.txt'
                     with open(concat_file, 'w') as f:
                         for video in processed_videos:
                             f.write(f"file '{Path(video).absolute()}'\n")
 
-                    # Use concat demuxer for efficient concatenation
+                    # Concatenate videos using direct FFmpeg command
+                    self.logger.info("Starting video concatenation")
+                    cmd = [
+                        'ffmpeg',
+                        '-f', 'concat',
+                        '-safe', '0',
+                        '-i', str(concat_file),
+                        '-c', 'copy',
+                        '-movflags', '+faststart',
+                        '-y',
+                        str(final_output)
+                    ]
+
                     try:
-                        stream = ffmpeg.input(str(concat_file), format='concat', safe=0)
-                        stream = ffmpeg.output(
-                            stream,
-                            str(final_output),
-                            acodec='copy',
-                            vcodec='copy',
-                            movflags='+faststart'
-                        ).overwrite_output()
+                        process = subprocess.Popen(
+                            cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            universal_newlines=True
+                        )
 
-                        stdout, stderr = ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
-                        self.logger.debug("Concatenation stdout: " + stdout.decode())
-                        self.logger.debug("Concatenation stderr: " + stderr.decode())
+                        # Monitor progress
+                        start_time = time.time()
+                        while process.poll() is None:
+                            if time.time() - start_time > 300:  # 5 minute timeout
+                                process.kill()
+                                raise subprocess.TimeoutExpired(cmd, 300)
+                            time.sleep(1)
 
-                    except ffmpeg.Error as e:
-                        self.logger.error("FFmpeg concatenation error:")
-                        self.logger.error(f"stdout: {e.stdout.decode() if e.stdout else ''}")
-                        self.logger.error(f"stderr: {e.stderr.decode() if e.stderr else ''}")
+                        stdout, stderr = process.communicate()
+                        if process.returncode != 0:
+                            raise subprocess.CalledProcessError(process.returncode, cmd, stderr)
+                        self.logger.info("Video concatenation completed successfully")
+
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        self.logger.error("Concatenation process timed out after 300 seconds")
+                        raise
+                    except Exception as e:
+                        self.logger.error(f"Error during concatenation: {str(e)}")
+                        if process and process.poll() is None:
+                            process.kill()
                         raise
 
                 self.logger.info(f"Successfully created video compilation: {final_output}")
                 return str(final_output)
-
             except Exception as e:
                 self.logger.error(f"Error during final compilation: {str(e)}")
                 if final_output.exists():

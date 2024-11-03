@@ -16,12 +16,6 @@ def setup_logging():
     )
     return logging.getLogger('AutoUploader')
 
-def setup_directories(config):
-    """Create input and output directories if they don't exist."""
-    for dir_path in [config.input_output.input_videos_dir,
-                    config.input_output.output_videos_dir]:
-        Path(dir_path).mkdir(parents=True, exist_ok=True)
-
 def cleanup_temp_files(input_dir):
     """Remove temporary video files."""
     for file in Path(input_dir).glob('*.mp4'):
@@ -39,7 +33,6 @@ def main():
     logger = setup_logging()
     logger.info(f"Starting video compilation for tag: {args.tag}")
     config = Config.load_config(args.config)
-    setup_directories(config)
 
     # Download videos using TiktokSource
     tiktok = TiktokSource(config)
