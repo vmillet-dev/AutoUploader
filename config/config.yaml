@@ -16,8 +16,8 @@ output_resolution:
 video_selection:
   amount: 5  # Number of videos to download per tag
 video_duration_limits:
-  min_length: 1  # in seconds
-  max_length: 60  # in seconds
+  min_length: 4  # in seconds
+  max_length: 20  # in seconds
 
 # Video Orientation Settings
 video_orientation:

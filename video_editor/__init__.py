@@ -33,8 +33,6 @@ class VideoEditor:
         self.output_dir = Path(self.config.input_output.output_videos_dir)
 
         # Create necessary directories
-        self.input_dir.mkdir(parents=True, exist_ok=True)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
         self.temp_dir = self.output_dir / 'temp'
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 

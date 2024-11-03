@@ -74,9 +74,7 @@ class TiktokSource(VideoSource):
                         has_more_videos = response_data.get('hasMore')
 
                     for item in response_data.get('itemList', []):
-                        if self.__handle_response_item(video_urls, keyword, item):
-                            if len(video_urls) >= amount:
-                                return video_urls
+                        self.__handle_response_item(video_urls, keyword, amount, item)
                 except Exception as e:
                     self.logger.warning(f"Error processing response: {str(e)}")
                     continue
@@ -108,23 +106,31 @@ class TiktokSource(VideoSource):
         self.driver.execute_script(f"window.scrollTo({{ top: {new_position}, behavior: 'smooth' }});")
         time.sleep(random.uniform(1.5, 2.5))  # Random delay to appear more human-like
 
-    def __handle_response_item(self, video_urls, keyword, item):
-        if self.__is_valid_video(item):
-            video_url = self.__construct_video_url(item)
-            if (video_url
-                and ((
-                        keyword in self.keyword_with_urls
-                        and any(isinstance(entry, dict) and entry.get("url") != video_url for entry in self.keyword_with_urls.get(keyword, []))
-                    )
-                    or keyword not in self.keyword_with_urls)
-                ):
-                self.logger.info(f"New video url found: {video_url}")
-                video_urls.append(video_url)
-                self.__add_tag_value(keyword, {
-                    'url': video_url,
-                    'description': item['desc'],
-                    'create_time': item['createTime']
-                })
+    def __handle_response_item(self, video_urls, keyword, amount, item):
+        if not self.__is_valid_video(item):
+            return
+
+        video_url = self.__construct_video_url(item)
+        if not video_url:
+            return
+
+        # Check if the keyword is in the dictionary and if the URL is not already present
+        keyword_exists = keyword in self.keyword_with_urls
+        url_is_new = keyword_exists and all(
+            isinstance(entry, dict) and entry.get("url") != video_url
+            for entry in self.keyword_with_urls.get(keyword, [])
+        )
+        keyword_missing = not keyword_exists
+
+        # Final condition to add a new video URL
+        if (url_is_new or keyword_missing) and len(video_urls) < amount:
+            self.logger.info(f"New video url found: {video_url}")
+            video_urls.append(video_url)
+            self.__add_tag_value(keyword, {
+                'url': video_url,
+                'description': item['desc'],
+                'create_time': item['createTime']
+            })
 
     @staticmethod
     def __construct_video_url(item):
