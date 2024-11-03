@@ -13,9 +13,11 @@ output_resolution:
   maintain_aspect_ratio: true
 
 # Video Selection Criteria
+video_selection:
+  amount: 5  # Number of videos to download per tag
 video_duration_limits:
-  min_length: 5  # in seconds
-  max_length: 20  # in seconds
+  min_length: 1  # in seconds
+  max_length: 60  # in seconds
 
 # Vertical Video Handling
 vertical_video:
@@ -52,7 +54,7 @@ transitions:
 # Video Effects
 effects:
   color_grading:
-    enabled: false
+    enabled: true
     brightness: 1.0
     contrast: 1.0
     saturation: 1.0

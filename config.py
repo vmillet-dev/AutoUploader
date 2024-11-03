@@ -19,6 +19,10 @@ class OutputResolution:
 
 # Video Selection Criteria
 @dataclass
+class VideoSelection:
+    amount: int  # Number of videos to download per tag
+
+@dataclass
 class VideoDurationLimits:
     min_length: int  # in seconds
     max_length: int  # in seconds
@@ -99,6 +103,7 @@ class Watermark:
 class Config:
     input_output: IOSettings
     output_resolution: OutputResolution
+    video_selection: VideoSelection
     video_duration_limits: VideoDurationLimits
     vertical_video: VerticalVideo
     audio: AudioSettings

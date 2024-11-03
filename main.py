@@ -1,69 +1,63 @@
+import argparse
 import logging
 from pathlib import Path
+import sys
+import time
 
 from config import Config
 from video_editor import VideoEditor
 from video_source.tiktok import TiktokSource
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+def setup_logging():
+    """Set up logging configuration."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    return logging.getLogger('AutoUploader')
 
-def setup_test_environment():
-    """Set up test directories and logging."""
-    # Set up logging
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger('TestVideoEditor')
+def setup_directories(config):
+    """Create input and output directories if they don't exist."""
+    for dir_path in [config.input_output.input_videos_dir,
+                    config.input_output.output_videos_dir]:
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
 
-    # Create test directories if they don't exist
-    test_dirs = ['input_videos', 'output_videos']
-    for dir_name in test_dirs:
-        path = Path(dir_name)
-        path.mkdir(exist_ok=True)
-        logger.info(f"Created directory: {path}")
+def cleanup_temp_files(input_dir):
+    """Remove temporary video files."""
+    for file in Path(input_dir).glob('*.mp4'):
+        file.unlink()
 
 def main():
-    """Test the VideoEditor class functionality."""
-    setup_test_environment()
-    logger = logging.getLogger('TestVideoEditor')
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Download TikTok videos by tag and create compilation')
+    parser.add_argument('tag', help='TikTok tag to search for')
+    parser.add_argument('--config', default='config/config.yaml', help='Path to config file')
+    parser.add_argument('--keep-temp', action='store_true', help='Keep temporary files after processing')
+    args = parser.parse_args()
 
-    # Initialize VideoEditor with config
-    config_path = 'config/config.yaml'
-    try:
-        editor = VideoEditor(config_path)
-        logger.info("Successfully initialized VideoEditor")
-    except Exception as e:
-        logger.error(f"Failed to initialize VideoEditor: {str(e)}")
-        return
+    # Initialize logging and configuration
+    logger = setup_logging()
+    logger.info(f"Starting video compilation for tag: {args.tag}")
+    config = Config.load_config(args.config)
+    setup_directories(config)
 
-    # Check if input directory exists and has videos
-    input_dir = Path(editor.config['input_directory'])
-    if not input_dir.exists():
-        logger.error(f"Input directory does not exist: {input_dir}")
-        return
+    # Download videos using TiktokSource
+    tiktok = TiktokSource(config)
+    amount = getattr(config.video_selection, 'amount', 5)
+    tiktok.get_video_by_keyword(args.tag, amount)
+    time.sleep(2)  # Wait for downloads to complete
 
-    video_files = list(input_dir.glob('*.mp4')) + list(input_dir.glob('*.avi'))
-    if not video_files:
-        logger.warning(f"No video files found in {input_dir}")
-        return
+    # Create compilation using VideoEditor
+    editor = VideoEditor(config)
+    output_path = editor.process_videos()
+    if not output_path or not Path(output_path).exists():
+        logger.error("Failed to create video compilation")
+        sys.exit(1)
 
-    logger.info(f"Found {len(video_files)} video files")
-
-    try:
-        # Process videos
-        output_path = editor.process_videos()
-        logger.info(f"Successfully created video compilation: {output_path}")
-
-        # Verify output file exists and has size > 0
-        output_file = Path(output_path)
-        if output_file.exists() and output_file.stat().st_size > 0:
-            logger.info("Verification passed: Output file exists and is not empty")
-        else:
-            logger.error("Verification failed: Output file is missing or empty")
-
-    except Exception as e:
-        logger.error(f"Error during video processing: {str(e)}")
+    # Report success and cleanup
+    logger.info(f"Successfully created compilation: {output_path}")
+    if not args.keep_temp:
+        cleanup_temp_files(config.input_output.input_videos_dir)
 
 if __name__ == '__main__':
-    config = Config.load_config('config/config.yaml')
-
-    tiktok = TiktokSource(config)
-    tiktok.get_video_by_keyword('fail', 10)
+    main()
