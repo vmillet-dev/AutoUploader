@@ -6,6 +6,11 @@ input_output:
   output_videos_dir: "./temp/output_videos/"
   video_urls_by_keyword_file: "./temp/video_urls_by_keyword.json"
 
+# Client AI/ML to use prompt with AI model
+aiml_client:
+  keys: []
+  base_url: "https://api.aimlapi.com/v1"
+
 # Video Output Settings
 output_resolution:
   width: 1920
@@ -14,7 +19,7 @@ output_resolution:
 
 # Video Selection Criteria
 video_selection:
-  amount: 5  # Number of videos to download per tag
+  amount: 3  # Number of videos to download per tag
 video_duration_limits:
   min_length: 4  # in seconds
   max_length: 20  # in seconds

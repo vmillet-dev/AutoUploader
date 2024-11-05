@@ -1,5 +1,7 @@
 import os
 from dataclasses import dataclass
+from typing import List
+
 from dacite import from_dict
 
 import yaml
@@ -9,6 +11,11 @@ class IOSettings:
     input_videos_dir: str
     output_videos_dir: str
     video_urls_by_keyword_file: str
+
+@dataclass
+class AimlClient:
+    base_url: str
+    keys: List[str]
 
 # Video Output Settings
 @dataclass
@@ -107,6 +114,7 @@ class Watermark:
 @dataclass
 class Config:
     input_output: IOSettings
+    aiml_client: AimlClient
     output_resolution: OutputResolution
     video_selection: VideoSelection
     video_duration_limits: VideoDurationLimits

@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import time
 
+from aiml_client import AILMClient
 from config import Config
 from video_editor import VideoEditor
 from video_source.tiktok import TiktokSource
@@ -11,10 +12,9 @@ from video_source.tiktok import TiktokSource
 def setup_logging():
     """Set up logging configuration."""
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.ERROR,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    return logging.getLogger('AutoUploader')
 
 def cleanup_temp_files(input_dir):
     """Remove temporary video files."""
@@ -30,7 +30,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize logging and configuration
-    logger = setup_logging()
+    logger = logging.getLogger('AutoUploader')
     logger.info(f"Starting video compilation for tag: {args.tag}")
     config = Config.load_config(args.config)
 
@@ -53,4 +53,11 @@ def main():
         cleanup_temp_files(config.input_output.input_videos_dir)
 
 if __name__ == '__main__':
-    main()
+    setup_logging()
+
+    # main()
+    client = AILMClient(Config.load_config('config/config.yaml'))
+    for i in range(0, 15):
+        response = client.send_prompt(f"What's does {i} * 100 / 5 ?")
+        print(response.content)
+
