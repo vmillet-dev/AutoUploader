@@ -4,8 +4,7 @@ from pathlib import Path
 import sys
 import time
 
-from aiml_client import AILMClient
-from config import Config
+from app.config import Config
 from video_editor import VideoEditor
 from video_source.tiktok import TiktokSource
 
@@ -54,10 +53,4 @@ def main():
 
 if __name__ == '__main__':
     setup_logging()
-
-    # main()
-    client = AILMClient(Config.load_config('config/config.yaml'))
-    for i in range(0, 15):
-        response = client.send_prompt(f"What's does {i} * 100 / 5 ?")
-        print(response.content)
-
+    main()

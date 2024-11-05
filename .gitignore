@@ -136,5 +136,5 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
-auth/
+app/auth/
 temp/

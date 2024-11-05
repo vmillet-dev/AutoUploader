@@ -1,5 +1,4 @@
 import ffmpeg
-import random
 import shutil
 import subprocess
 import time
@@ -8,10 +7,6 @@ from typing import Dict, List, Optional, Tuple, Union
 import logging
 
 from config import Config
-from video_editor.clip_analyzer import ClipAnalyzer
-from video_editor.color_grader import ColorGrader
-from video_editor.pacing_controller import PacingController
-
 
 class VideoEditor:
     """A class for automated video editing using ffmpeg."""
@@ -24,9 +19,6 @@ class VideoEditor:
         """
         self.config = config
         self.logger = self._setup_logger()
-        self.clip_analyzer = ClipAnalyzer()
-        self.pacing_controller = PacingController()
-        self.color_grader = ColorGrader()
 
         # Set up input/output paths from nested config
         self.input_dir = Path(self.config.input_output.input_videos_dir)

@@ -8,7 +8,7 @@ import yt_dlp
 import undetected_chromedriver as uc
 from selenium.webdriver.support.wait import WebDriverWait
 
-from video_source import VideoSource
+from app.video_source import VideoSource
 
 class TiktokSource(VideoSource):
     logger = logging.getLogger("TiktokSource")
