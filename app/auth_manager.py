@@ -2,20 +2,20 @@ import json
 import logging
 import os
 from datetime import datetime
+from logging import DEBUG
 
-class CredentialManager:
-    __TOKEN_FILE = '/token.json'
-    __CLIENT_SECRETS_FILE = '/client_secret.json'
-    __CREDENTIAL_TRACKER_FILE = 'credential_tracker.json'
 
-    logger = logging.getLogger("CredentialManager")
-    client_secret_data = None
-    token_data = None
+class AuthManager:
+    logger = logging.getLogger("AuthManager")
 
-    def __init__(self, base_auth_folder):
+    def __init__(self, config):
+        self.logger.setLevel(DEBUG)
+        self.token_file_path = config.input_output.token_file_name
+        self.client_secret_file_path = config.input_output.client_secret_file_name
+        self.credential_tracker_file = config.input_output.credential_tracker_file_name
         tracker = self.__load_credential_tracker()
         if len(tracker['credentials']) == 0:
-            self.__init_tracker(base_auth_folder, tracker)
+            self.__init_tracker(config.input_output.auth_dir, tracker)
         self.__next_credential_available()
 
     def update_current_credential(self, quota_exhausted=False):
@@ -36,6 +36,11 @@ class CredentialManager:
         tracker['current_index'] = 0
         self.__save_credential_tracker(tracker)
 
+    def save_refrsh_token(self, data):
+        tracker = self.__load_credential_tracker()
+        with open(tracker['credentials'][tracker['current_index']]['folder'] + self.token_file_path, 'w') as token_file:
+            token_file.write(data)
+
     def __init_tracker(self, base_auth_folder, tracker):
         self.logger.info("Init tracker file")
         credential_folders = os.listdir(base_auth_folder)
@@ -43,7 +48,7 @@ class CredentialManager:
             raise Exception("No credential folders found")
         for credential in credential_folders:
             tracker['credentials'].append({
-                "folder": base_auth_folder + credential,
+                "folder": base_auth_folder + credential + '/',
                 "last_used": None,
                 "quota_exhausted": False
             })
@@ -57,8 +62,7 @@ class CredentialManager:
                 if tracker['credentials'][next_index]['quota_exhausted'] is not True:
                     tracker['current_index'] = next_index
                     self.__save_credential_tracker(tracker)
-                    self.__load_current_credential(tracker)
-                    self.logger.info(f"Next credential available found, loading {tracker['credentials'][next_index]['folder']}")
+                    self.logger.info(f"Credential available found, loading {tracker['credentials'][next_index]['folder']}")
                     return True
                 else:
                     self.logger.info(f"Credential at {tracker['credentials'][next_index]['folder']} exceeds quota, trying next one...")
@@ -66,32 +70,26 @@ class CredentialManager:
             else:
                 next_index = 0
             if next_index == tracker['current_index']:
-                self.client_secret_data = None
-                self.token_data = None
+                tracker['current_index'] = 0
                 self.logger.warning("No more credentials available")
                 return False
 
     def __load_credential_tracker(self):
-        if os.path.exists(self.__CREDENTIAL_TRACKER_FILE):
-            with open(self.__CREDENTIAL_TRACKER_FILE, 'r') as f:
+        if os.path.exists(self.credential_tracker_file):
+            with open(self.credential_tracker_file, 'r') as f:
                 return json.load(f)
-        self.logger.warning(f"{self.__CREDENTIAL_TRACKER_FILE} not found. Creating new one")
+        self.logger.warning(f"{self.credential_tracker_file} not found. Creating new one")
         return {"credentials": [], "current_index": 0}
 
     def __save_credential_tracker(self, tracker):
-        with open(self.__CREDENTIAL_TRACKER_FILE, 'w') as f:
+        with open(self.credential_tracker_file, 'w') as f:
             json.dump(tracker, f, indent=2)
 
-    def __load_data_from_json(self, tracker, file):
-        path = tracker['credentials'][tracker['current_index']]['folder'] + file
-        if os.path.exists(path):
-            try:
-                with open(path, 'r') as token_file:
-                    return json.load(token_file)
-            except Exception as e:
-                self.logger.error(f"Error loading token file: {str(e)}")
+    def get_current_client_secret_file(self):
+        tracker = self.__load_credential_tracker()
+        return tracker['credentials'][tracker['current_index']]['folder'] + self.client_secret_file_path
 
-    def __load_current_credential(self, tracker):
-        self.client_secret_data = self.__load_data_from_json(tracker, self.__CLIENT_SECRETS_FILE)
-        self.token_data = self.__load_data_from_json(tracker, self.__TOKEN_FILE)
-        self.logger.info(f"Loaded existing credentials from token file {self.__TOKEN_FILE} and {self.__CLIENT_SECRETS_FILE}")
+    def get_current_token_json_file(self):
+        tracker = self.__load_credential_tracker()
+        return tracker['credentials'][tracker['current_index']]['folder'] + self.token_file_path
+

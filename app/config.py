@@ -8,6 +8,10 @@ import yaml
 
 @dataclass
 class IOSettings:
+    auth_dir: str
+    token_file_name: str
+    client_secret_file_name: str
+    credential_tracker_file_name: str
     input_videos_dir: str
     output_videos_dir: str
     video_urls_by_keyword_file: str
@@ -112,9 +116,7 @@ class Watermark:
     size: WatermarkSize
 
 @dataclass
-class Config:
-    input_output: IOSettings
-    aiml_client: AimlClient
+class VideoEditor:
     output_resolution: OutputResolution
     video_selection: VideoSelection
     video_duration_limits: VideoDurationLimits
@@ -124,6 +126,12 @@ class Config:
     transitions: Transitions
     effects: Effects
     watermark: Watermark
+
+@dataclass
+class Config:
+    input_output: IOSettings
+    aiml_client: AimlClient
+    video_editor: VideoEditor
 
     @staticmethod
     def load_config(file_path: str):

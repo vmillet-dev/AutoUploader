@@ -137,4 +137,4 @@ cython_debug/
 .idea/
 
 app/auth/
-temp/
+output/

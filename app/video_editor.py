@@ -86,8 +86,8 @@ class VideoEditor:
 
     def _filter_videos_by_duration(self, video_paths: List[str]) -> List[str]:
         """Filter videos based on duration limits from config."""
-        min_length = self.config.video_duration_limits.min_length
-        max_length = self.config.video_duration_limits.max_length
+        min_length = self.config.video_editor.video_duration_limits.min_length
+        max_length = self.config.video_editor.video_duration_limits.max_length
 
         filtered_videos = []
         for path in video_paths:
@@ -121,10 +121,10 @@ class VideoEditor:
             # Calculate dimensions
             input_width = int(video_info.get('width', 0))
             input_height = int(video_info.get('height', 0))
-            target_width = self.config.output_resolution.width
-            target_height = self.config.output_resolution.height
+            target_width = self.config.video_editor.output_resolution.width
+            target_height = self.config.video_editor.output_resolution.height
             is_input_vertical = self._is_vertical(video_info)
-            is_output_vertical = self.config.video_orientation.output_mode == "vertical"
+            is_output_vertical = self.config.video_editor.video_orientation.output_mode == "vertical"
 
             if input_width == 0 or input_height == 0:
                 raise ValueError("Invalid input dimensions")
@@ -132,7 +132,7 @@ class VideoEditor:
             self.logger.debug(f"Input dimensions: {input_width}x{input_height}")
             self.logger.debug(f"Target dimensions: {target_width}x{target_height}")
             self.logger.debug(f"Input orientation: {'vertical' if is_input_vertical else 'landscape'}")
-            self.logger.debug(f"Output orientation: {self.config.video_orientation.output_mode}")
+            self.logger.debug(f"Output orientation: {self.config.video_editor.video_orientation.output_mode}")
 
             # Calculate scaling to fit within target dimensions while maintaining aspect ratio
             input_aspect = input_width / input_height
@@ -171,10 +171,10 @@ class VideoEditor:
 
             # Handle background filling based on orientation mismatch
             if is_input_vertical != is_output_vertical:
-                background_type = self.config.video_orientation.vertical_video.background_type
+                background_type = self.config.video_editor.video_orientation.vertical_video.background_type
                 if background_type == "blur":
                     # Create blurred background from input
-                    blur_amount = self.config.video_orientation.vertical_video.blur_amount
+                    blur_amount = self.config.video_editor.video_orientation.vertical_video.blur_amount
                     background = (
                         video_stream
                         .filter('scale', str(target_width), str(target_height))
@@ -182,7 +182,7 @@ class VideoEditor:
                     )
                 elif background_type in ["image", "video"]:
                     # Use provided background
-                    bg_path = self.config.video_orientation.vertical_video.background_path
+                    bg_path = self.config.video_editor.video_orientation.vertical_video.background_path
                     if not bg_path:
                         raise ValueError(f"Background path not provided for type: {background_type}")
                     background = (
@@ -215,7 +215,7 @@ class VideoEditor:
             return None
 
         try:
-            if not self.config.audio.normalize:
+            if not self.config.video_editor.audio.normalize:
                 return audio_stream
 
             normalized = (
@@ -231,7 +231,7 @@ class VideoEditor:
     def _apply_transition(self, video1: str, video2: str, output_path: str):
         """Apply transition effect between two videos."""
         try:
-            duration = self.config.transitions.duration
+            duration = self.config.video_editor.transitions.duration
 
             stream1 = ffmpeg.input(video1)
             stream2 = ffmpeg.input(video2)
@@ -292,7 +292,7 @@ class VideoEditor:
                     cmd = [
                         'ffmpeg',
                         '-i', str(video_path),
-                        '-vf', f'scale={self.config.output_resolution.width}:{self.config.output_resolution.height}:force_original_aspect_ratio=decrease,pad={self.config.output_resolution.width}:{self.config.output_resolution.height}:(ow-iw)/2:(oh-ih)/2',
+                        '-vf', f'scale={self.config.video_editor.output_resolution.width}:{self.config.video_editor.output_resolution.height}:force_original_aspect_ratio=decrease,pad={self.config.video_editor.output_resolution.width}:{self.config.video_editor.output_resolution.height}:(ow-iw)/2:(oh-ih)/2',
                         '-c:v', 'libx264',
                         '-preset', 'ultrafast',
                         '-pix_fmt', 'yuv420p',
