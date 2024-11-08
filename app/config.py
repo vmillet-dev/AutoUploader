@@ -1,14 +1,25 @@
 import os
 from dataclasses import dataclass
+from typing import List
+
 from dacite import from_dict
 
 import yaml
 
 @dataclass
 class IOSettings:
+    auth_dir: str
+    token_file_name: str
+    client_secret_file_name: str
+    credential_tracker_file_name: str
     input_videos_dir: str
     output_videos_dir: str
     video_urls_by_keyword_file: str
+
+@dataclass
+class AimlClient:
+    base_url: str
+    keys: List[str]
 
 # Video Output Settings
 @dataclass
@@ -18,6 +29,10 @@ class OutputResolution:
     maintain_aspect_ratio: bool
 
 # Video Selection Criteria
+@dataclass
+class VideoSelection:
+    amount: int  # Number of videos to download per tag
+
 @dataclass
 class VideoDurationLimits:
     min_length: int  # in seconds
@@ -29,6 +44,11 @@ class VerticalVideo:
     background_type: str  # Options: blur, image, video
     background_path: str  # Path to background image/video if type is image/video
     blur_amount: int  # Amount of blur if background_type is blur
+
+@dataclass
+class VideoOrientation:
+    output_mode: str  # Options: landscape, vertical
+    vertical_video: VerticalVideo
 
 # Audio Settings
 @dataclass
@@ -96,16 +116,22 @@ class Watermark:
     size: WatermarkSize
 
 @dataclass
-class Config:
-    input_output: IOSettings
+class VideoEditor:
     output_resolution: OutputResolution
+    video_selection: VideoSelection
     video_duration_limits: VideoDurationLimits
-    vertical_video: VerticalVideo
+    video_orientation: VideoOrientation
     audio: AudioSettings
     text_overlay: TextOverlay
     transitions: Transitions
     effects: Effects
     watermark: Watermark
+
+@dataclass
+class Config:
+    input_output: IOSettings
+    aiml_client: AimlClient
+    video_editor: VideoEditor
 
     @staticmethod
     def load_config(file_path: str):

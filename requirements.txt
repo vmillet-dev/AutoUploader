@@ -1,8 +1,19 @@
+# Scraper
 git+https://www.github.com/vmillet-dev/undetected-chromedriver@master
-opencv-python~=4.10.0.84
-ffmpeg-python~=0.2.0
-PyYAML~=6.0.2
-numpy~=2.1.2
-scipy~=1.14.1
-yt_dlp~=2024.10.22
-dacite~=1.8.1
+opencv-python==4.10.0.84
+ffmpeg-python==0.2.0
+numpy==2.1.2
+scipy==1.14.1
+yt_dlp==2024.10.22
+
+openai==1.54.1
+
+# Youtube
+google-auth==2.20.0
+google-auth-oauthlib==0.6.0
+google-auth-httplib2==0.1.0
+google-api-python-client==2.70.0
+
+# Config
+dacite==1.8.1
+PyYAML==6.0.2

@@ -1,0 +1,91 @@
+# Video Editor Configuration
+
+# Input/Output Settings
+input_output:
+  # credentials management
+  auth_dir: "auth/"
+  token_file_name: "token.json"
+  client_secret_file_name: "client_secret.json"
+  credential_tracker_file_name: "output/credential_tracker.json"
+
+  # Videos
+  input_videos_dir: "output/input_videos/"
+  output_videos_dir: "output/output_videos/"
+  video_urls_by_keyword_file: "output/video_urls_by_keyword.json"
+
+# Client AI/ML to use prompt with AI model
+aiml_client:
+  keys: []
+  base_url: "https://api.aimlapi.com/v1"
+
+video_editor:
+  # Video Output Settings
+  output_resolution:
+    width: 1920
+    height: 1080
+    maintain_aspect_ratio: true
+
+  # Video Selection Criteria
+  video_selection:
+    amount: 3  # Number of videos to download per tag
+  video_duration_limits:
+    min_length: 4  # in seconds
+    max_length: 20  # in seconds
+
+  # Video Orientation Settings
+  video_orientation:
+    output_mode: "landscape"  # Options: landscape, vertical
+    vertical_video:
+      background_type: "blur"  # Options: blur, image, video
+      # For background_type options:
+      # - "blur": Uses blurred version of the video itself (set blur_amount)
+      # - "image": Uses static image as background (set background_path to .jpg/.png)
+      # - "video": Uses looping video as background (set background_path to .mp4)
+      background_path: ""  # Path to background image/video if type is image/video
+      blur_amount: 20  # Amount of blur if background_type is blur
+
+  # Audio Settings
+  audio:
+    normalize: true
+    target_loudness: -14  # Target LUFS (Loudness Units relative to Full Scale)
+    max_loudness: -1.0   # Maximum peak loudness in dB
+    sample_rate: 44100   # Audio sample rate in Hz
+
+  # Text and Subtitles
+  text_overlay:
+    enabled: false
+    default_font: "Arial"
+    default_size: 48
+    default_color: "white"
+    default_position:
+      x: "center"  # Options: left, center, right, or pixel value
+      y: "bottom"  # Options: top, center, bottom, or pixel value
+
+  # Transition Settings
+  transitions:
+    type: "fade"  # Options: fade, dissolve, wipe
+    duration: 1.0  # Duration in seconds
+
+  # Video Effects
+  effects:
+    color_grading:
+      enabled: true
+      brightness: 1.0
+      contrast: 1.0
+      saturation: 1.0
+
+    speed:
+      enabled: false
+      factor: 1.0  # 1.0 is normal speed, <1 slower, >1 faster
+
+  # Watermark
+  watermark:
+    enabled: false
+    path: ""  # Path to watermark image
+    position:
+      x: "right"  # Options: left, center, right, or pixel value
+      y: "bottom" # Options: top, center, bottom, or pixel value
+    opacity: 0.8  # 0.0 to 1.0
+    size:
+      width: 100  # in pixels
+      height: 100 # in pixels

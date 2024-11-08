@@ -8,7 +8,7 @@ import yt_dlp
 import undetected_chromedriver as uc
 from selenium.webdriver.support.wait import WebDriverWait
 
-from video_source import VideoSource
+from app.video_source import VideoSource
 
 class TiktokSource(VideoSource):
     logger = logging.getLogger("TiktokSource")
@@ -35,15 +35,19 @@ class TiktokSource(VideoSource):
             self.logger.info(f"Amount of new videos found: {len(video_urls)}")
             self.__download_video(video_urls)
             self.__save_fetched_urls()
+        except Exception as e:
+            self.logger.error(f"Error in get_video_by_keyword: {str(e)}")
+            raise
         finally:
-            self.driver.quit()
+            if self.driver:
+                self.driver.quit()
 
     def __extract_video_urls_from_logs(self, keyword, amount):
         """Efficiently extracts up to `amount` video URLs from network logs."""
         video_urls = []
         has_more_videos = True
 
-        while has_more_videos:
+        while has_more_videos and len(video_urls) < amount:
             logs = self.driver.get_log('performance')
             for log_entry in logs:
                 # Early filtering of relevant logs
@@ -56,64 +60,77 @@ class TiktokSource(VideoSource):
                     continue
 
                 # Fetch and parse the response body
-                response_body = self.driver.execute_cdp_cmd(
-                    'Network.getResponseBody',
-                    {'requestId': log_data['params']['requestId']}
-                )
-                if not response_body or 'body' not in response_body:
+                try:
+                    response_body = self.driver.execute_cdp_cmd(
+                        'Network.getResponseBody',
+                        {'requestId': log_data['params']['requestId']}
+                    )
+                    if not response_body or 'body' not in response_body:
+                        continue
+
+                    # Parse response data and extract video URLs
+                    response_data = json.loads(response_body['body'])
+                    if isinstance(response_data.get('hasMore'), bool):
+                        has_more_videos = response_data.get('hasMore')
+
+                    for item in response_data.get('itemList', []):
+                        self.__handle_response_item(video_urls, keyword, amount, item)
+                except Exception as e:
+                    self.logger.warning(f"Error processing response: {str(e)}")
                     continue
 
-                # Directly parse relevant fields from the response body
-                response_data = json.loads(response_body['body'])
-                if isinstance(response_data.get('hasMore'), bool):
-                    has_more_videos = response_data.get('hasMore')
-                for item in response_data.get('itemList', []):
-                    self.__handle_response_item(video_urls, keyword, item)
-                    if len(video_urls) >= amount:  # Stop early if we have enough URLs
-                        return video_urls
-                break
-            if has_more_videos:
+            if has_more_videos and len(video_urls) < amount:
                 self.logger.info('Scrolling to get more videos')
                 self.__scroll()
-            else:
-                self.logger.warning('No more videos on this tag')
+                time.sleep(2)  # Wait for new content to load
+            elif len(video_urls) == 0:
+                self.logger.warning('No videos found on this tag')
+                break
 
         return video_urls
 
     def __wait_for_page_ready(self, timeout=10):
+        """Wait for the page to be fully loaded."""
         WebDriverWait(self.driver, timeout).until(
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
-        self.logger.debug(f"Page ready")
+        self.logger.debug("Page ready")
 
     def __scroll(self):
+        """Scroll the page to load more content."""
         current_position = self.driver.execute_script("return window.pageYOffset;")
-        viewport_height = self.driver.execute_script("return window.innerHeight")
+        viewport_height = self.driver.execute_script("return window.innerHeight;")
+        scroll_amount = random.randint(int(viewport_height * 0.5), int(viewport_height * 0.8))
+        new_position = current_position + scroll_amount
 
-        scroll_distance = random.randint(int(viewport_height / 10), int(viewport_height * 0.8))
-        target_position = current_position + scroll_distance
+        self.driver.execute_script(f"window.scrollTo({{ top: {new_position}, behavior: 'smooth' }});")
+        time.sleep(random.uniform(1.5, 2.5))  # Random delay to appear more human-like
 
-        self.driver.execute_script(f"window.scrollTo({{ top: {target_position}, behavior: 'smooth' }});")
+    def __handle_response_item(self, video_urls, keyword, amount, item):
+        if not self.__is_valid_video(item):
+            return
 
-        time.sleep(random.uniform(1, 3))
+        video_url = self.__construct_video_url(item)
+        if not video_url:
+            return
 
-    def __handle_response_item(self, video_urls, keyword, item):
-        if self.__is_valid_video(item):
-            video_url = self.__construct_video_url(item)
-            if (video_url
-                and ((
-                        keyword in self.keyword_with_urls
-                        and any(isinstance(entry, dict) and entry.get("url") != video_url for entry in self.keyword_with_urls.get(keyword, []))
-                    )
-                    or keyword not in self.keyword_with_urls)
-                ):
-                self.logger.info(f"New video url found: {video_url}")
-                video_urls.append(video_url)
-                self.__add_tag_value(keyword, {
-                    'url': video_url,
-                    'description': item['desc'],
-                    'create_time': item['createTime']
-                })
+        # Check if the keyword is in the dictionary and if the URL is not already present
+        keyword_exists = keyword in self.keyword_with_urls
+        url_is_new = keyword_exists and all(
+            isinstance(entry, dict) and entry.get("url") != video_url
+            for entry in self.keyword_with_urls.get(keyword, [])
+        )
+        keyword_missing = not keyword_exists
+
+        # Final condition to add a new video URL
+        if (url_is_new or keyword_missing) and len(video_urls) < amount:
+            self.logger.info(f"New video url found: {video_url}")
+            video_urls.append(video_url)
+            self.__add_tag_value(keyword, {
+                'url': video_url,
+                'description': item['desc'],
+                'create_time': item['createTime']
+            })
 
     @staticmethod
     def __construct_video_url(item):
